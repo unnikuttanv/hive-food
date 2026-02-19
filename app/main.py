@@ -118,6 +118,47 @@ def logout():
     clear_login_cookie(response)
     return response
 
+# ---- Change password ----
+
+@app.get("/change-password", response_class=HTMLResponse)
+def change_password_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login?err=Please+log+in", status_code=302)
+    return templates.TemplateResponse("change_password.html", {
+        "request": request,
+        "current_user": user,
+        "flash": flash(request),
+    })
+
+@app.post("/change-password")
+def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login?err=Please+log+in", status_code=302)
+
+    if not verify_password(current_password, user.password_hash):
+        return RedirectResponse("/change-password?err=Current+password+is+incorrect", status_code=302)
+
+    if len(new_password) < 8:
+        return RedirectResponse("/change-password?err=New+password+must+be+at+least+8+characters", status_code=302)
+
+    if new_password != confirm_password:
+        return RedirectResponse("/change-password?err=New+passwords+do+not+match", status_code=302)
+
+    with get_session() as session:
+        db_user = session.get(User, user.id)
+        db_user.password_hash = hash_password(new_password)
+        session.add(db_user)
+        session.commit()
+
+    return RedirectResponse("/?ok=Password+changed+successfully", status_code=302)
+
 # ---- Admin user management ----
 
 @app.get("/admin/users", response_class=HTMLResponse)

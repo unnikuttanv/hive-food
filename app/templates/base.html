@@ -17,6 +17,7 @@
       <div class="actions">
         {% if current_user %}
           <span class="muted">{{ current_user.full_name }} ({{ current_user.email }}){% if current_user.is_admin %} • Admin{% endif %}</span>
+          <a href="/change-password"><button class="secondary">Change Password</button></a>
           <a href="/logout"><button class="secondary">Logout</button></a>
         {% else %}
           <a href="/login"><button class="secondary">Login</button></a>
