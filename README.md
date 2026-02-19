@@ -99,6 +99,49 @@ Users can self-register with their **company email**, as long as the domain is o
 
 ---
 
+## Deploy to the Cloud (share a link)
+
+The easiest way to host this app for free and get a shareable URL is **[Render.com](https://render.com)**:
+
+### One-click deploy with Render
+
+1. Push this repo to your GitHub account (or fork it).
+2. Go to [https://dashboard.render.com/](https://dashboard.render.com/) and sign up / log in.
+3. Click **New → Blueprint** and connect your GitHub repository.
+4. Render will detect the `render.yaml` file and set up the service automatically.
+5. Update the environment variables (`ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD`, `ALLOWED_EMAIL_DOMAINS`) in the Render dashboard under **Environment**.
+6. Your app will be live at `https://hive-food.onrender.com` (or a similar URL).
+
+> **Tip:** On the free plan, the service spins down after 15 minutes of inactivity. The first request after that takes ~30 seconds to wake up.
+
+> **⚠️ Data persistence:** Render's free tier uses an ephemeral filesystem — SQLite data is lost on every redeploy or restart. For production use, switch to a managed PostgreSQL database (Render offers a free PostgreSQL instance).
+
+### Manual deploy with Render
+
+1. Go to [https://dashboard.render.com/](https://dashboard.render.com/) and click **New → Web Service**.
+2. Connect your GitHub repo and select it.
+3. Choose **Docker** as the environment.
+4. Set the following environment variables:
+   - `SECRET_KEY` — a random string (Render can generate one for you)
+   - `ALLOWED_EMAIL_DOMAINS` — e.g., `mira-vision.com,company2.de`
+   - `ADMIN_BOOTSTRAP_EMAIL` — initial admin email
+   - `ADMIN_BOOTSTRAP_PASSWORD` — initial admin password
+   - `DATABASE_URL` — `sqlite:///./hive_food.db`
+5. Click **Create Web Service** and share the URL!
+
+### Other hosting options
+
+You can deploy this app anywhere Docker is supported:
+
+| Platform | Free tier | Notes |
+|----------|-----------|-------|
+| [Render](https://render.com) | ✅ Yes | Recommended — `render.yaml` included |
+| [Fly.io](https://fly.io) | ✅ Yes | Use `fly launch` with the existing Dockerfile |
+| [Railway](https://railway.app) | Trial | Auto-detects Dockerfile |
+| Any VPS | N/A | `docker build -t hive-food . && docker run -p 8000:8000 --env-file .env hive-food` |
+
+---
+
 ## Security Notes (MVP)
 
 - Passwords are hashed (bcrypt).
