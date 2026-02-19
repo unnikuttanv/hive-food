@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <h2>Create order session</h2>
+      <form method="post" action="/sessions/new">
+        <label>Title</label>
+        <input name="title" required placeholder="Lunch – Sushi / Pizza / etc."/>
+        <div class="row" style="margin-top:10px;">
+          <div class="col">
+            <label>Restaurant name</label>
+            <input name="restaurant" required placeholder="Restaurant XYZ"/>
+          </div>
+          <div class="col">
+            <label>Restaurant URL (optional)</label>
+            <input name="restaurant_url" placeholder="https://..."/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div class="col">
+            <label>Deadline (local time)</label>
+            <input name="deadline_at" type="datetime-local" required/>
+            <p class="muted">After the deadline, adding/editing items is blocked.</p>
+          </div>
+          <div class="col">
+            <label>Notes (optional)</label>
+            <textarea name="notes" placeholder="Anything important (e.g., delivery address, discount code)"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px;" class="actions">
+          <button type="submit">Create</button>
+          <a href="/"><button type="button" class="secondary">Cancel</button></a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <div class="actions" style="justify-content: space-between;">
+        <div>
+          <h2>User Management</h2>
+          <div class="muted">Create and manage user accounts.</div>
+        </div>
+        <a href="/"><button class="secondary">Back to Dashboard</button></a>
+      </div>
+      <hr/>
+      <h3 style="font-size:15px; margin-bottom:10px;">Add new user</h3>
+      <form method="post" action="/admin/users/new">
+        <div class="row">
+          <div class="col">
+            <label>Full name</label>
+            <input name="full_name" required placeholder="Jane Doe"/>
+          </div>
+          <div class="col">
+            <label>Email</label>
+            <input name="email" type="email" required placeholder="jane@company.com"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div class="col">
+            <label>Password</label>
+            <input name="password" type="password" required minlength="8" placeholder="Min. 8 characters"/>
+          </div>
+          <div class="col" style="display:flex;align-items:flex-end;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input name="is_admin" type="checkbox" value="true" style="width:auto;"/>
+              Admin
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button type="submit">Create User</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>All Users ({{ users|length }})</h2>
+      {% if users|length == 0 %}
+        <p class="muted">No users found.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td><strong>{{ u.full_name }}</strong></td>
+                <td>{{ u.email }}</td>
+                <td>
+                  {% if u.is_admin %}
+                    <span class="badge" style="background:#fef3c7;color:#92400e;">Admin</span>
+                  {% else %}
+                    <span class="badge">User</span>
+                  {% endif %}
+                </td>
+                <td class="muted">{{ fmt_dt(u.created_at) }}</td>
+                <td class="actions">
+                  {% if u.id != current_user.id %}
+                    <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="margin:0;">
+                      <button class="secondary" type="submit" title="Toggle admin status">
+                        {% if u.is_admin %}Revoke Admin{% else %}Make Admin{% endif %}
+                      </button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ u.id }}/delete" style="margin:0;" onsubmit="return confirm('Delete {{ u.full_name }}?');">
+                      <button class="danger" type="submit">Delete</button>
+                    </form>
+                  {% else %}
+                    <span class="muted">You</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

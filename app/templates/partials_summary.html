@@ -1,0 +1,27 @@
+{% if totals|length == 0 %}
+  <p class="muted">No items yet.</p>
+{% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Person</th>
+        <th># Items</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in totals %}
+      <tr>
+        <td><strong>{{ t.full_name }}</strong><br/><span class="muted">{{ t.email }}</span></td>
+        <td>{{ t.count }}</td>
+        <td>{{ euro(t.subtotal) }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td><strong>Total</strong></td>
+        <td><strong>{{ grand_count }}</strong></td>
+        <td><strong>{{ euro(grand_total) }}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+{% endif %}

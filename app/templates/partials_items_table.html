@@ -1,0 +1,39 @@
+<table>
+  <thead>
+    <tr>
+      <th>Person</th>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Price</th>
+      <th>Notes</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><strong>{{ row.user.full_name }}</strong><br/><span class="muted">{{ row.user.email }}</span></td>
+        <td>{{ row.item.item_name }}</td>
+        <td>{{ row.item.quantity }}</td>
+        <td>{{ euro(row.item.price_eur) }}</td>
+        <td class="muted">{{ row.item.notes or "" }}</td>
+        <td class="actions">
+          {% if row.can_edit %}
+            <button class="secondary"
+              hx-get="/sessions/{{ session_id }}/items/{{ row.item.id }}/edit"
+              hx-target="#item-form"
+              hx-swap="innerHTML"
+            >Edit</button>
+            <form method="post" action="/sessions/{{ session_id }}/items/{{ row.item.id }}/delete" style="margin:0;"
+              hx-post="/sessions/{{ session_id }}/items/{{ row.item.id }}/delete"
+              hx-target="#item-form"
+              hx-swap="innerHTML"
+            >
+              <button class="danger" type="submit">Delete</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

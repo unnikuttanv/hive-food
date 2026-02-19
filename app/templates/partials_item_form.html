@@ -1,0 +1,42 @@
+{% if error %}
+  <div class="card" style="background:#fef2f2; border:1px solid #fecaca;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+{% endif %}
+
+<form
+  method="post"
+  action="{{ action }}"
+  hx-post="{{ action }}"
+  hx-target="#item-form"
+  hx-swap="innerHTML"
+>
+  <div class="row">
+    <div class="col">
+      <label>Item</label>
+      <input name="item_name" required value="{{ item.item_name if item else '' }}" placeholder="Margherita Pizza"/>
+    </div>
+    <div class="col">
+      <label>Quantity</label>
+      <input name="quantity" type="number" min="1" value="{{ item.quantity if item else 1 }}"/>
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px;">
+    <div class="col">
+      <label>Price (EUR, optional)</label>
+      <input name="price_eur" type="number" step="0.01" min="0" value="{{ item.price_eur if item and item.price_eur is not none else '' }}"/>
+    </div>
+    <div class="col">
+      <label>Notes (optional)</label>
+      <input name="notes" value="{{ item.notes if item else '' }}" placeholder="No onions / extra spicy / etc."/>
+    </div>
+  </div>
+  <div class="actions" style="margin-top:12px;">
+    <button type="submit">{% if item %}Save{% else %}Add{% endif %}</button>
+    <button type="button" class="secondary"
+      hx-get="/sessions/{{ session_id }}/items/blank"
+      hx-target="#item-form"
+      hx-swap="innerHTML"
+    >Cancel</button>
+  </div>
+</form>

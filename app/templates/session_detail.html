@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="actions" style="justify-content: space-between;">
+    <div>
+      <h2 style="margin-bottom:6px;">{{ session.title }}</h2>
+      <div class="muted">
+        <strong>{{ session.restaurant }}</strong>
+        {% if session.restaurant_url %} • <a href="{{ session.restaurant_url }}" target="_blank">restaurant link</a>{% endif %}
+        <br/>
+        Deadline: <strong>{{ fmt_dt(session.deadline_at) }}</strong>
+        • Status: <strong>{{ session.status }}</strong>
+      </div>
+    </div>
+    <div class="actions">
+      <a href="/"><button class="secondary">Back</button></a>
+      {% if can_close %}
+        {% if session.status == "open" %}
+          <form method="post" action="/sessions/{{ session.id }}/close" style="margin:0;">
+            <button class="danger" type="submit">Close session</button>
+          </form>
+        {% endif %}
+      {% endif %}
+      <a href="/sessions/{{ session.id }}/export.csv"><button class="secondary">Export CSV</button></a>
+    </div>
+  </div>
+
+  {% if session.notes %}
+    <hr/>
+    <div><strong>Notes:</strong> <span class="muted">{{ session.notes }}</span></div>
+  {% endif %}
+</div>
+
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <div class="actions" style="justify-content: space-between;">
+        <h2>Items</h2>
+        {% if editable %}
+          <button
+            hx-get="/sessions/{{ session.id }}/items/new"
+            hx-target="#item-form"
+            hx-swap="innerHTML"
+          >Add item</button>
+        {% else %}
+          <span class="badge" style="background:#fef3c7;color:#92400e;">Locked</span>
+        {% endif %}
+      </div>
+      <div id="item-form" style="margin-top:12px;"></div>
+
+      <div id="items-table" hx-get="/sessions/{{ session.id }}/items/table" hx-trigger="load, every 10s"></div>
+
+      {% if not editable %}
+        <p class="muted" style="margin-top:12px;">This session is locked (deadline passed or closed).</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2>Summary</h2>
+      <div id="summary" hx-get="/sessions/{{ session.id }}/summary" hx-trigger="load, every 10s"></div>
+      <hr/>
+      <h2>Order Text (copy/paste)</h2>
+      <div id="order-text" hx-get="/sessions/{{ session.id }}/order_text" hx-trigger="load, every 10s"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

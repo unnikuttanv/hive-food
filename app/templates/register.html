@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <h2>Create account</h2>
+      <form method="post" action="/register">
+        <label>Full name</label>
+        <input name="full_name" required/>
+        <label style="margin-top:10px;">Company email</label>
+        <input name="email" type="email" required placeholder="name@company.com"/>
+        <label style="margin-top:10px;">Password</label>
+        <input name="password" type="password" required minlength="8"/>
+        <p class="muted">Password must be at least 8 characters.</p>
+        <div style="margin-top:12px;" class="actions">
+          <button type="submit">Create account</button>
+          <a href="/login"><button type="button" class="secondary">Back to login</button></a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
