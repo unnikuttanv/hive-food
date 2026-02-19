@@ -114,6 +114,8 @@ The easiest way to host this app for free and get a shareable URL is **[Render.c
 
 > **Tip:** On the free plan, the service spins down after 15 minutes of inactivity. The first request after that takes ~30 seconds to wake up.
 
+> **⚠️ Data persistence:** Render's free tier uses an ephemeral filesystem — SQLite data is lost on every redeploy or restart. For production use, switch to a managed PostgreSQL database (Render offers a free PostgreSQL instance).
+
 ### Manual deploy with Render
 
 1. Go to [https://dashboard.render.com/](https://dashboard.render.com/) and click **New → Web Service**.
