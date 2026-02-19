@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: hive-food
+    runtime: docker
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_EMAIL_DOMAINS
+        value: "mira-vision.com"
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        value: "hive.manager@hive-gp.de"
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        value: "ChangeMe123!"
+      - key: DATABASE_URL
+        value: "sqlite:///./hive_food.db"
