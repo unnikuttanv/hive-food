@@ -13,7 +13,7 @@ from sqlmodel import select
 
 from .config import APP_NAME, ALLOWED_EMAIL_DOMAINS, ADMIN_BOOTSTRAP_EMAIL, ADMIN_BOOTSTRAP_PASSWORD
 from .db import init_db, get_session
-from .models import User, OrderSession, OrderItem
+from .models import User, OrderSession, OrderItem, Restaurant, MenuItem
 from .auth import hash_password, verify_password, set_login_cookie, clear_login_cookie, get_user_id_from_request
 from .utils import now_utc, fmt_dt, euro
 
@@ -246,6 +246,137 @@ def admin_toggle_admin(request: Request, target_user_id: int):
 
     return RedirectResponse("/admin/users?ok=Admin+status+toggled", status_code=302)
 
+# ---- Admin restaurant & menu management ----
+
+@app.get("/admin/restaurants", response_class=HTMLResponse)
+def admin_restaurants_page(request: Request):
+    user = get_current_user(request)
+    if not user or not user.is_admin:
+        return RedirectResponse("/?err=Admin+access+required", status_code=302)
+
+    with get_session() as session:
+        restaurants = session.exec(select(Restaurant).order_by(Restaurant.name)).all()
+        # eager-load menu items
+        for r in restaurants:
+            _ = r.menu_items
+
+    return templates.TemplateResponse("admin_restaurants.html", {
+        "request": request,
+        "current_user": user,
+        "restaurants": restaurants,
+        "flash": flash(request),
+    })
+
+@app.post("/admin/restaurants/new")
+def admin_create_restaurant(
+    request: Request,
+    name: str = Form(...),
+    url: str = Form(""),
+):
+    user = get_current_user(request)
+    if not user or not user.is_admin:
+        return RedirectResponse("/?err=Admin+access+required", status_code=302)
+
+    name = name.strip()
+    if not name:
+        return RedirectResponse("/admin/restaurants?err=Name+is+required", status_code=302)
+
+    with get_session() as session:
+        existing = session.exec(select(Restaurant).where(Restaurant.name == name)).first()
+        if existing:
+            return RedirectResponse("/admin/restaurants?err=Restaurant+already+exists", status_code=302)
+        r = Restaurant(name=name, url=(url.strip() or None))
+        session.add(r)
+        session.commit()
+
+    return RedirectResponse("/admin/restaurants?ok=Restaurant+created", status_code=302)
+
+@app.post("/admin/restaurants/{restaurant_id}/delete")
+def admin_delete_restaurant(request: Request, restaurant_id: int):
+    user = get_current_user(request)
+    if not user or not user.is_admin:
+        return RedirectResponse("/?err=Admin+access+required", status_code=302)
+
+    with get_session() as session:
+        r = session.get(Restaurant, restaurant_id)
+        if not r:
+            return RedirectResponse("/admin/restaurants?err=Restaurant+not+found", status_code=302)
+        session.delete(r)
+        session.commit()
+
+    return RedirectResponse("/admin/restaurants?ok=Restaurant+deleted", status_code=302)
+
+@app.post("/admin/restaurants/{restaurant_id}/menu/new")
+def admin_add_menu_item(
+    request: Request,
+    restaurant_id: int,
+    name: str = Form(...),
+    price_eur: str = Form(""),
+):
+    user = get_current_user(request)
+    if not user or not user.is_admin:
+        return RedirectResponse("/?err=Admin+access+required", status_code=302)
+
+    price_val = None
+    if price_eur.strip():
+        try:
+            price_val = float(price_eur)
+        except Exception:
+            return RedirectResponse(f"/admin/restaurants?err=Price+must+be+a+number", status_code=302)
+
+    with get_session() as session:
+        r = session.get(Restaurant, restaurant_id)
+        if not r:
+            return RedirectResponse("/admin/restaurants?err=Restaurant+not+found", status_code=302)
+        mi = MenuItem(restaurant_id=restaurant_id, name=name.strip(), price_eur=price_val)
+        session.add(mi)
+        session.commit()
+
+    return RedirectResponse(f"/admin/restaurants?ok=Menu+item+added#restaurant-{restaurant_id}", status_code=302)
+
+@app.post("/admin/restaurants/{restaurant_id}/menu/{item_id}/delete")
+def admin_delete_menu_item(request: Request, restaurant_id: int, item_id: int):
+    user = get_current_user(request)
+    if not user or not user.is_admin:
+        return RedirectResponse("/?err=Admin+access+required", status_code=302)
+
+    with get_session() as session:
+        mi = session.get(MenuItem, item_id)
+        if not mi or mi.restaurant_id != restaurant_id:
+            return RedirectResponse("/admin/restaurants?err=Menu+item+not+found", status_code=302)
+        session.delete(mi)
+        session.commit()
+
+    return RedirectResponse(f"/admin/restaurants?ok=Menu+item+deleted#restaurant-{restaurant_id}", status_code=302)
+
+# ---- HTMX endpoints for dropdowns ----
+
+@app.get("/api/restaurants", response_class=HTMLResponse)
+def api_restaurants_options(request: Request):
+    """Return <option> tags for all restaurants."""
+    with get_session() as session:
+        restaurants = session.exec(select(Restaurant).order_by(Restaurant.name)).all()
+    html = '<option value="">-- Select a restaurant --</option>'
+    for r in restaurants:
+        html += f'<option value="{r.id}" data-url="{r.url or ""}">{r.name}</option>'
+    return HTMLResponse(html)
+
+@app.get("/api/restaurants/{restaurant_id}/menu", response_class=HTMLResponse)
+def api_restaurant_menu_options(request: Request, restaurant_id: int):
+    """Return <option> tags for menu items of a restaurant."""
+    with get_session() as session:
+        items = session.exec(
+            select(MenuItem).where(MenuItem.restaurant_id == restaurant_id).order_by(MenuItem.name)
+        ).all()
+    html = '<option value="">-- Select a menu item --</option>'
+    for mi in items:
+        price_str = f" (€{mi.price_eur:.2f})" if mi.price_eur is not None else ""
+        html += f'<option value="{mi.id}" data-price="{mi.price_eur if mi.price_eur is not None else ""}" data-name="{mi.name}">{mi.name}{price_str}</option>'
+    html += '<option value="custom">Other (type manually)</option>'
+    return HTMLResponse(html)
+
+# ---- Order sessions ----
+
 @app.get("/sessions/new", response_class=HTMLResponse)
 def session_new_page(request: Request):
     user = get_current_user(request)
@@ -253,14 +384,22 @@ def session_new_page(request: Request):
         return RedirectResponse("/login?err=Please+log+in", status_code=302)
     if not user.is_admin:
         return RedirectResponse("/?err=Only+admins+can+create+sessions", status_code=302)
-    return templates.TemplateResponse("session_new.html", {"request": request, "current_user": user, "flash": flash(request)})
+
+    with get_session() as session:
+        restaurants = session.exec(select(Restaurant).order_by(Restaurant.name)).all()
+
+    return templates.TemplateResponse("session_new.html", {
+        "request": request,
+        "current_user": user,
+        "restaurants": restaurants,
+        "flash": flash(request),
+    })
 
 @app.post("/sessions/new")
 def session_new(
     request: Request,
     title: str = Form(...),
-    restaurant: str = Form(...),
-    restaurant_url: str = Form(""),
+    restaurant_id: int = Form(...),
     deadline_at: str = Form(...),
     notes: str = Form(""),
 ):
@@ -276,16 +415,21 @@ def session_new(
     except Exception:
         return RedirectResponse("/sessions/new?err=Invalid+deadline", status_code=302)
 
-    s = OrderSession(
-        title=title.strip(),
-        restaurant=restaurant.strip(),
-        restaurant_url=(restaurant_url.strip() or None),
-        deadline_at=dt,
-        notes=(notes.strip() or None),
-        created_by_user_id=user.id,
-        status="open",
-    )
     with get_session() as session:
+        rest = session.get(Restaurant, restaurant_id)
+        if not rest:
+            return RedirectResponse("/sessions/new?err=Restaurant+not+found", status_code=302)
+
+        s = OrderSession(
+            title=title.strip(),
+            restaurant_id=restaurant_id,
+            restaurant=rest.name,
+            restaurant_url=(rest.url or None),
+            deadline_at=dt,
+            notes=(notes.strip() or None),
+            created_by_user_id=user.id,
+            status="open",
+        )
         session.add(s)
         session.commit()
         session.refresh(s)
@@ -348,18 +492,24 @@ def item_new_form(request: Request, session_id: int):
     if not user:
         return HTMLResponse("", status_code=401)
 
+    menu_items = []
     with get_session() as session:
         s = session.get(OrderSession, session_id)
         if not s:
             return HTMLResponse("Session not found", status_code=404)
         if not is_session_editable(s):
             return HTMLResponse("Locked", status_code=400)
+        if s.restaurant_id:
+            menu_items = session.exec(
+                select(MenuItem).where(MenuItem.restaurant_id == s.restaurant_id).order_by(MenuItem.name)
+            ).all()
 
     return templates.TemplateResponse("partials_item_form.html", {
         "request": request,
         "current_user": user,
         "session_id": session_id,
         "item": None,
+        "menu_items": menu_items,
         "action": f"/sessions/{session_id}/items/new",
         "error": None,
         "flash": None,
@@ -369,7 +519,8 @@ def item_new_form(request: Request, session_id: int):
 def item_create(
     request: Request,
     session_id: int,
-    item_name: str = Form(...),
+    menu_item_id: str = Form(""),
+    item_name: str = Form(""),
     quantity: int = Form(1),
     price_eur: str = Form(""),
     notes: str = Form(""),
@@ -385,14 +536,45 @@ def item_create(
         if not is_session_editable(s):
             return HTMLResponse("Locked", status_code=400)
 
+        # Resolve item name and price from menu item if selected
+        resolved_name = item_name.strip()
         price_val = None
+
+        if menu_item_id and menu_item_id not in ("", "custom"):
+            mi = session.get(MenuItem, int(menu_item_id))
+            if mi:
+                resolved_name = mi.name
+                if mi.price_eur is not None:
+                    price_val = mi.price_eur
+
+        if not resolved_name:
+            menu_items = []
+            if s.restaurant_id:
+                menu_items = session.exec(
+                    select(MenuItem).where(MenuItem.restaurant_id == s.restaurant_id).order_by(MenuItem.name)
+                ).all()
+            return templates.TemplateResponse("partials_item_form.html", {
+                "request": request, "current_user": user, "session_id": session_id,
+                "item": None, "menu_items": menu_items,
+                "action": f"/sessions/{session_id}/items/new",
+                "error": "Please select a menu item or type an item name.",
+                "flash": None
+            })
+
+        # Override price if user typed one
         if price_eur.strip():
             try:
                 price_val = float(price_eur)
             except Exception:
+                menu_items = []
+                if s.restaurant_id:
+                    menu_items = session.exec(
+                        select(MenuItem).where(MenuItem.restaurant_id == s.restaurant_id).order_by(MenuItem.name)
+                    ).all()
                 return templates.TemplateResponse("partials_item_form.html", {
                     "request": request, "current_user": user, "session_id": session_id,
-                    "item": None, "action": f"/sessions/{session_id}/items/new",
+                    "item": None, "menu_items": menu_items,
+                    "action": f"/sessions/{session_id}/items/new",
                     "error": "Price must be a number (e.g., 9.50).",
                     "flash": None
                 })
@@ -400,7 +582,7 @@ def item_create(
         item = OrderItem(
             session_id=session_id,
             user_id=user.id,
-            item_name=item_name.strip(),
+            item_name=resolved_name,
             quantity=max(1, int(quantity)),
             price_eur=price_val,
             notes=(notes.strip() or None),
@@ -417,6 +599,7 @@ def item_edit_form(request: Request, session_id: int, item_id: int):
     if not user:
         return HTMLResponse("", status_code=401)
 
+    menu_items = []
     with get_session() as session:
         s = session.get(OrderSession, session_id)
         item = session.get(OrderItem, item_id)
@@ -426,12 +609,17 @@ def item_edit_form(request: Request, session_id: int, item_id: int):
             return HTMLResponse("Locked", status_code=400)
         if not (user.is_admin or item.user_id == user.id):
             return HTMLResponse("Not allowed", status_code=403)
+        if s.restaurant_id:
+            menu_items = session.exec(
+                select(MenuItem).where(MenuItem.restaurant_id == s.restaurant_id).order_by(MenuItem.name)
+            ).all()
 
     return templates.TemplateResponse("partials_item_form.html", {
         "request": request,
         "current_user": user,
         "session_id": session_id,
         "item": item,
+        "menu_items": menu_items,
         "action": f"/sessions/{session_id}/items/{item_id}/edit",
         "error": None,
         "flash": None,

@@ -1,38 +1,36 @@
-# HIVE Food Coordinator (MVP)
+# HIVE Food Coordinator
 
-A small web app to coordinate office food orders between different companies/teams in the HIVE (Göppingen).
+A web app to coordinate office food orders between different companies/teams in the HIVE (Göppingen).
 
-## What it does (MVP)
+## Features
 
-- Web-based (browser accessible)
-- User management via company email (domain allow-list)
-- Create "Order Sessions" (restaurant + deadline)
-- People add their items (name, qty, price, notes)
-- Live order board and summary (total per person, total for session)
-- Lock/close an order when placed; export a concise "order text" for WhatsApp/call
-- Basic roles:
-  - **Admin** (e.g., HIVE managers): can see all sessions, can create/close, can manage allowed domains via config
-  - **User**: can create sessions, join sessions, add/edit their own items
+- **Restaurant & menu management** — Admins add restaurants and their menu items
+- **Order sessions** — Create a session with a restaurant, deadline, and notes
+- **Dropdown ordering** — Users pick from the restaurant's menu (or type a custom item)
+- **Live order board** — Real-time view of all items, summary per person, and grand total
+- **Order text** — Copy/paste-ready text for WhatsApp or phone orders
+- **CSV export** — Download session data as a CSV file
+- **User management** — Admin-managed accounts with company email domain restriction
+- **Password management** — Users can change their own password
 
-> This is an MVP intentionally kept simple: SQLite DB, cookie-session auth, server-rendered templates.
+## Live Site
 
----
+The app is hosted on Render:
+
+> **URL:** [https://hive-food.onrender.com](https://hive-food.onrender.com)
+
+**Note:** On the free plan, the service may spin down after inactivity. The first request after that takes ~30 seconds to wake up.
 
 ## Tech Stack
 
-- **FastAPI** (Python) for web server and routing
-- **Jinja2** templates for HTML
-- **SQLModel + SQLite** for persistence
-- **HTMX** for small interactive updates (no heavy SPA required)
+- **FastAPI** (Python) — web server and routing
+- **Jinja2** — server-rendered HTML templates
+- **SQLModel + SQLite** — database
+- **HTMX** — lightweight interactivity without a JS framework
+- **Docker** — containerised deployment on Render
 
----
+## Local Development
 
-## Setup (Local)
-
-### 1) Prerequisites
-- Python 3.11+ recommended
-
-### 2) Install & configure
 ```bash
 git clone <this-repo>
 cd hive-food-coordinator
@@ -41,121 +39,41 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-Edit `.env`:
-- `SECRET_KEY`: set to a random value
-- `ALLOWED_EMAIL_DOMAINS`: comma-separated list (e.g. `mira-vision.com,company2.de`)
-- `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD`: initial admin login
+Create a `.env` file:
+```
+SECRET_KEY=some-random-string
+ALLOWED_EMAIL_DOMAINS=mira-vision.com
+ADMIN_BOOTSTRAP_EMAIL=admin@example.com
+ADMIN_BOOTSTRAP_PASSWORD=YourPassword123
+```
 
-### 3) Run
+Run:
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Open:
-- http://127.0.0.1:8000
+Open http://127.0.0.1:8000
 
----
+## Usage
 
-## Setup (Docker)
+### Admin workflow
+1. Log in with the bootstrap admin credentials
+2. Go to **Manage Restaurants** — add restaurants and their menu items
+3. Go to **Manage Users** — create accounts for team members
+4. Create an **Order Session** — pick a restaurant, set a deadline
+5. Share the session link with the team
+6. Close the session when the order is placed
 
-```bash
-docker build -t hive-food .
-docker run --rm -p 8000:8000 --env-file .env -v "$(pwd)/hive_food.db:/app/hive_food.db" hive-food
-```
+### User workflow
+1. Log in and open an active session
+2. Click **Add item** — pick from the restaurant's menu dropdown
+3. Adjust quantity, override price, or add notes
+4. Done — the admin handles the rest
 
-Open:
-- http://127.0.0.1:8000
+## Security Notes
 
----
-
-## Using the App
-
-### First login (bootstrap admin)
-1. Go to `/login`
-2. Sign in using `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD`
-3. From the dashboard, create an order session.
-
-### Invite users
-Users can self-register with their **company email**, as long as the domain is on the allow-list:
-- Example: `@mira-vision.com`, `@hive-gp.de`, `@partner-company.de`
-
-### Create an order session
-- Restaurant name + optional URL
-- Deadline (after that, the session auto-locks for edits)
-- Optional notes (e.g., “Please add price if possible”)
-
-### Join / add items
-- Open the session
-- Add items
-- Edit/delete your own items until the session is locked/closed
-
-### Place order / close session
-- Click **Close session**
-- Copy the “Order Text” block to call/WhatsApp the restaurant
-- Export CSV if needed
-
----
-
-## Deploy to the Cloud (share a link)
-
-The easiest way to host this app for free and get a shareable URL is **[Render.com](https://render.com)**:
-
-### One-click deploy with Render
-
-1. Push this repo to your GitHub account (or fork it).
-2. Go to [https://dashboard.render.com/](https://dashboard.render.com/) and sign up / log in.
-3. Click **New → Blueprint** and connect your GitHub repository.
-4. Render will detect the `render.yaml` file and set up the service automatically.
-5. Update the environment variables (`ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD`, `ALLOWED_EMAIL_DOMAINS`) in the Render dashboard under **Environment**.
-6. Your app will be live at `https://hive-food.onrender.com` (or a similar URL).
-
-> **Tip:** On the free plan, the service spins down after 15 minutes of inactivity. The first request after that takes ~30 seconds to wake up.
-
-> **⚠️ Data persistence:** Render's free tier uses an ephemeral filesystem — SQLite data is lost on every redeploy or restart. For production use, switch to a managed PostgreSQL database (Render offers a free PostgreSQL instance).
-
-### Manual deploy with Render
-
-1. Go to [https://dashboard.render.com/](https://dashboard.render.com/) and click **New → Web Service**.
-2. Connect your GitHub repo and select it.
-3. Choose **Docker** as the environment.
-4. Set the following environment variables:
-   - `SECRET_KEY` — a random string (Render can generate one for you)
-   - `ALLOWED_EMAIL_DOMAINS` — e.g., `mira-vision.com,company2.de`
-   - `ADMIN_BOOTSTRAP_EMAIL` — initial admin email
-   - `ADMIN_BOOTSTRAP_PASSWORD` — initial admin password
-   - `DATABASE_URL` — `sqlite:///./hive_food.db`
-5. Click **Create Web Service** and share the URL!
-
-### Other hosting options
-
-You can deploy this app anywhere Docker is supported:
-
-| Platform | Free tier | Notes |
-|----------|-----------|-------|
-| [Render](https://render.com) | ✅ Yes | Recommended — `render.yaml` included |
-| [Fly.io](https://fly.io) | ✅ Yes | Use `fly launch` with the existing Dockerfile |
-| [Railway](https://railway.app) | Trial | Auto-detects Dockerfile |
-| Any VPS | N/A | `docker build -t hive-food . && docker run -p 8000:8000 --env-file .env hive-food` |
-
----
-
-## Security Notes (MVP)
-
-- Passwords are hashed (bcrypt).
-- Cookie-based session auth (server-side signing).
-- Domain allow-list to enforce "company email" usage.
-
-For production:
-- Use HTTPS
-- Add email verification and/or SSO (Microsoft Entra / Google Workspace)
-- Move to Postgres and add migrations (Alembic)
-- Add audit logs and rate limiting
-
----
-
-## Future features (ideas)
-
-See section 1.2 in the accompanying write-up in the chat response (architecture notes).
+- Passwords are hashed with bcrypt
+- Cookie-based session auth (signed tokens)
+- Company email domain allow-list for account creation

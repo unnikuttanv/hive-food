@@ -9,12 +9,16 @@
         <input name="title" required placeholder="Lunch – Sushi / Pizza / etc."/>
         <div class="row" style="margin-top:10px;">
           <div class="col">
-            <label>Restaurant name</label>
-            <input name="restaurant" required placeholder="Restaurant XYZ"/>
-          </div>
-          <div class="col">
-            <label>Restaurant URL (optional)</label>
-            <input name="restaurant_url" placeholder="https://..."/>
+            <label>Restaurant</label>
+            <select name="restaurant_id" required>
+              <option value="">-- Select a restaurant --</option>
+              {% for r in restaurants %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+              {% endfor %}
+            </select>
+            {% if restaurants|length == 0 %}
+            <p class="muted">No restaurants configured. <a href="/admin/restaurants">Add restaurants first</a>.</p>
+            {% endif %}
           </div>
         </div>
         <div class="row" style="margin-top:10px;">

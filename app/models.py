@@ -13,10 +13,30 @@ class User(SQLModel, table=True):
     items: list["OrderItem"] = Relationship(back_populates="user")
 
 
+class Restaurant(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True, unique=True)
+    url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    menu_items: list["MenuItem"] = Relationship(back_populates="restaurant", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+
+class MenuItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    restaurant_id: int = Field(foreign_key="restaurant.id", index=True)
+    name: str
+    price_eur: Optional[float] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    restaurant: Restaurant = Relationship(back_populates="menu_items")
+
+
 class OrderSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str  # e.g. "Lunch – Pizza Service"
-    restaurant: str
+    restaurant_id: Optional[int] = Field(default=None, foreign_key="restaurant.id")
+    restaurant: str  # kept for display / legacy
     restaurant_url: Optional[str] = None
     notes: Optional[str] = None
 

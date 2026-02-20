@@ -65,16 +65,13 @@
       <div class="actions" style="justify-content: space-between;">
         <div>
           <h2>Admin</h2>
-          <p class="muted">Manage users and system settings.</p>
+          <p class="muted">Manage users, restaurants, and menus.</p>
         </div>
-        <a href="/admin/users"><button>Manage Users</button></a>
+        <div class="actions">
+          <a href="/admin/users"><button>Manage Users</button></a>
+          <a href="/admin/restaurants"><button>Manage Restaurants</button></a>
+        </div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Admin notes</h2>
-      <p class="muted">Allowed email domains are configured through environment variable <code>ALLOWED_EMAIL_DOMAINS</code>.</p>
-      <p class="muted">This MVP bootstraps the first admin from <code>ADMIN_BOOTSTRAP_EMAIL</code>.</p>
     </div>
     {% endif %}
   </div>

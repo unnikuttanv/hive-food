@@ -13,8 +13,28 @@
 >
   <div class="row">
     <div class="col">
-      <label>Item</label>
-      <input name="item_name" required value="{{ item.item_name if item else '' }}" placeholder="Margherita Pizza"/>
+      {% if menu_items and menu_items|length > 0 and not item %}
+        <label>Menu item</label>
+        <select name="menu_item_id" id="menu-item-select" onchange="handleMenuItemChange(this)">
+          <option value="">-- Select from menu --</option>
+          {% for mi in menu_items %}
+            <option value="{{ mi.id }}"
+              data-price="{{ mi.price_eur if mi.price_eur is not none else '' }}"
+              data-name="{{ mi.name }}">
+              {{ mi.name }}{% if mi.price_eur is not none %} (€{{ "%.2f"|format(mi.price_eur) }}){% endif %}
+            </option>
+          {% endfor %}
+          <option value="custom">Other (type manually)</option>
+        </select>
+        <div id="custom-item-name" style="display:none; margin-top:8px;">
+          <label>Item name</label>
+          <input name="item_name" value="" placeholder="Type your item..."/>
+        </div>
+      {% else %}
+        <label>Item</label>
+        <input name="item_name" required value="{{ item.item_name if item else '' }}" placeholder="Margherita Pizza"/>
+        <input type="hidden" name="menu_item_id" value="custom"/>
+      {% endif %}
     </div>
     <div class="col">
       <label>Quantity</label>
@@ -24,7 +44,8 @@
   <div class="row" style="margin-top:10px;">
     <div class="col">
       <label>Price (EUR, optional)</label>
-      <input name="price_eur" type="number" step="0.01" min="0" value="{{ item.price_eur if item and item.price_eur is not none else '' }}"/>
+      <input name="price_eur" id="price-input" type="number" step="0.01" min="0" value="{{ item.price_eur if item and item.price_eur is not none else '' }}"/>
+      <p class="muted">Auto-filled from menu. Override if needed.</p>
     </div>
     <div class="col">
       <label>Notes (optional)</label>
@@ -40,3 +61,20 @@
     >Cancel</button>
   </div>
 </form>
+
+<script>
+function handleMenuItemChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var customDiv = document.getElementById('custom-item-name');
+  var priceInput = document.getElementById('price-input');
+
+  if (sel.value === 'custom') {
+    if (customDiv) { customDiv.style.display = 'block'; }
+  } else {
+    if (customDiv) { customDiv.style.display = 'none'; }
+    if (priceInput && opt.dataset.price) {
+      priceInput.value = opt.dataset.price;
+    }
+  }
+}
+</script>
